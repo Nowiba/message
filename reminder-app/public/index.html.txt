@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Appointment Reminder</title>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-messaging-compat.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 500px;
+      margin: auto;
+    }
+    label,
+    input,
+    select,
+    textarea,
+    button {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.5rem;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+  </style>
+</head>
+<body>
+  <h2>Book Your Appointment</h2>
+
+  <label for="time">Choose a Time:</label>
+  <select id="apptTime"></select>
+
+  <label for="name">Your Name:</label>
+  <input type="text" id="name" placeholder="Enter your name" />
+
+  <label for="details">Reason / Details:</label>
+  <textarea id="details" placeholder="Describe your appointment"></textarea>
+
+  <button onclick="bookAppointment()">Book Appointment</button>
+
+  <script>
+    // Initialize Firebase
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
+  authDomain: "information-project1.firebaseapp.com",
+  databaseURL: "https://information-project1-default-rtdb.firebaseio.com",
+  projectId: "information-project1",
+  storageBucket: "information-project1.firebasestorage.app",
+  messagingSenderId: "1098270976013",
+  appId: "1:1098270976013:web:2e1ca7602b316b6ed30d44",
+  measurementId: "G-YFL07VDXCX"
+};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const messaging = firebase.messaging();
+
+    // Populate 15-minute time slots from 06:00 to 00:00 (midnight)
+    const select = document.getElementById("apptTime");
+    const start = 6 * 60; // 6:00 AM in minutes
+    const end = 24 * 60; // 24:00 (midnight) in minutes
+    for (let min = start; min <= end; min += 15) {
+      let h = Math.floor(min / 60);
+      let m = min % 60;
+      if (h === 24) h = 0; // midnight should show as 00
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      const option = document.createElement("option");
+      option.value = `${hh}:${mm}`;
+      option.textContent = `${hh}:${mm}`;
+      select.appendChild(option);
+    }
+
+    // Get FCM token
+    let fcmToken = null;
+    messaging
+      .getToken({ vapidKey: "BNlp2EIsaWfALwRtOZ_vD-Cqhdi_wwJzJD7DzbwwvVLaOw01-vZK-noqdVG9aMBgyjtNx_Q5hV5t6R7SnL1wvAU" })
+      .then((token) => {
+        fcmToken = token;
+      })
+      .catch((err) => console.error("FCM error", err));
+
+    function bookAppointment() {
+      const time = document.getElementById("apptTime").value;
+      const name = document.getElementById("name").value;
+      const details = document.getElementById("details").value;
+
+      if (!time || !name || !details || !fcmToken)
+        return alert("Please fill all fields and allow notifications.");
+
+      const now = new Date();
+      const [hours, minutes] = time.split(":");
+      const timestamp = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        hours,
+        minutes
+      ).toISOString();
+
+      db.ref("appointments")
+        .push({
+          timestamp,
+          name,
+          details,
+          fcmToken,
+          reminderSent: false,
+        })
+        .then(() => alert("Appointment booked!"));
+    }
+  </script>
+</body>
+</html>

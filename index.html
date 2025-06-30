@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appointment Reminder</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <title>Appointment Reminder System</title>
     <style>
         :root {
             --primary-color: #4285f4;
@@ -27,6 +26,7 @@
             color: var(--text-color);
             line-height: 1.6;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .container {
@@ -78,6 +78,7 @@
             font-size: 16px;
             width: 100%;
             transition: background-color 0.3s;
+            margin-top: 5px;
         }
 
         button:hover {
@@ -127,6 +128,30 @@
             display: none;
         }
 
+        .browser-warning {
+            background-color: #ffebee;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background-color: var(--secondary-color);
+        }
+
+        .status-disconnected {
+            background-color: var(--error-color);
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 10px;
@@ -144,11 +169,22 @@
 </head>
 <body>
     <div class="container">
-        <h1>Appointment Reminder</h1>
+        <h1>Appointment Reminder System</h1>
+        
+        <div class="browser-warning" id="browserWarning">
+            <h3>Browser Compatibility Notice</h3>
+            <p>For best experience, use Chrome, Firefox, or Safari. Brave users may need to:</p>
+            <ol>
+                <li>Click the lock icon in the address bar</li>
+                <li>Select "Site settings"</li>
+                <li>Change notifications to "Allow"</li>
+            </ol>
+        </div>
         
         <div class="notification-permission" id="notificationPermission">
-            <p>Please enable notifications to receive appointment reminders.</p>
+            <p>Notifications are required for appointment reminders.</p>
             <button id="enableNotificationsBtn">Enable Notifications</button>
+            <p id="tokenStatus"><span class="status-indicator status-disconnected"></span> Notifications not enabled</p>
         </div>
 
         <div class="card">
@@ -174,7 +210,6 @@
             <h2>Your Appointments</h2>
             <div id="appointmentsContainer">
                 <p id="noAppointments">No appointments scheduled yet.</p>
-                <!-- Appointments will be added here dynamically -->
             </div>
         </div>
     </div>
@@ -208,6 +243,8 @@
         const enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
         const appointmentsContainer = document.getElementById('appointmentsContainer');
         const noAppointments = document.getElementById('noAppointments');
+        const tokenStatus = document.getElementById('tokenStatus');
+        const browserWarning = document.getElementById('browserWarning');
 
         // Set minimum datetime to current time
         const now = new Date();
@@ -217,19 +254,32 @@
 
         // Global variables
         let fcmToken = null;
+        let isBrave = false;
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
+            detectBrowser();
+            setupEventListeners();
             checkNotificationPermission();
             loadAppointments();
-            registerServiceWorker();
-            
-            // Handle form submission
-            appointmentForm.addEventListener('submit', scheduleAppointment);
-            
-            // Handle notification permission request
-            enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
         });
+
+        // Detect browser type
+        function detectBrowser() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            isBrave = userAgent.includes('brave');
+            
+            // Show warning for Brave and Safari
+            if (isBrave || navigator.userAgent.includes('safari') && !navigator.userAgent.includes('chrome')) {
+                browserWarning.style.display = 'block';
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            appointmentForm.addEventListener('submit', scheduleAppointment);
+            enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
+        }
 
         // Register service worker
         async function registerServiceWorker() {
@@ -240,10 +290,13 @@
                     
                     // Initialize messaging after service worker is registered
                     initializeMessaging();
+                    return true;
                 } catch (err) {
                     console.error('Service Worker registration failed:', err);
+                    return false;
                 }
             }
+            return false;
         }
 
         // Initialize Firebase Messaging
@@ -254,30 +307,53 @@
                 // Handle incoming messages
                 messaging.onMessage((payload) => {
                     console.log('Message received in foreground', payload);
-                    const notificationTitle = payload.notification.title;
-                    const notificationOptions = {
-                        body: payload.notification.body,
-                        icon: '/icons/icon-192x192.png'
-                    };
-                    
-                    if (!("Notification" in window)) {
-                        console.log("This browser does not support system notifications");
-                    } else if (Notification.permission === "granted") {
-                        new Notification(notificationTitle, notificationOptions);
-                    }
+                    showNotification(payload.notification.title, payload.notification.body);
                 });
+                
+                return true;
             } catch (error) {
                 console.error('Error initializing messaging:', error);
+                return false;
+            }
+        }
+
+        // Show notification
+        function showNotification(title, body) {
+            if (!("Notification" in window)) return;
+            
+            if (Notification.permission === "granted") {
+                new Notification(title, {
+                    body: body,
+                    icon: '/icons/icon-192x192.png'
+                });
             }
         }
 
         // Check notification permission status
-        function checkNotificationPermission() {
-            if (Notification.permission === 'denied') {
-                notificationPermission.style.display = 'block';
-            } else if (Notification.permission === 'granted') {
-                notificationPermission.style.display = 'none';
-                getFCMToken();
+        async function checkNotificationPermission() {
+            try {
+                if (Notification.permission === 'denied') {
+                    notificationPermission.style.display = 'block';
+                    tokenStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Notifications blocked';
+                    return false;
+                }
+                
+                if (Notification.permission === 'granted') {
+                    notificationPermission.style.display = 'none';
+                    return await getFCMToken();
+                }
+                
+                // Handle cases where permission is 'default' but notifications might work
+                const token = await getFCMToken();
+                if (token) {
+                    notificationPermission.style.display = 'none';
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Permission check failed:', error);
+                return false;
             }
         }
 
@@ -286,13 +362,26 @@
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    notificationPermission.style.display = 'none';
-                    await getFCMToken();
-                } else {
-                    alert('Notifications are required for appointment reminders. Please enable them in your browser settings.');
+                    // Register service worker after permission is granted
+                    const swRegistered = await registerServiceWorker();
+                    
+                    if (swRegistered) {
+                        const token = await getFCMToken();
+                        if (token) {
+                            notificationPermission.style.display = 'none';
+                            tokenStatus.innerHTML = '<span class="status-indicator status-connected"></span> Notifications enabled';
+                            return true;
+                        }
+                    }
                 }
+                
+                // If we get here, something failed
+                tokenStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Failed to enable notifications';
+                return false;
             } catch (error) {
                 console.error('Error requesting notification permission:', error);
+                tokenStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Error enabling notifications';
+                return false;
             }
         }
 
@@ -300,15 +389,30 @@
         async function getFCMToken() {
             try {
                 if (!messaging) {
-                    initializeMessaging();
+                    if (!initializeMessaging()) {
+                        throw new Error('Messaging not initialized');
+                    }
+                }
+
+                const token = await messaging.getToken();
+                if (!token) {
+                    throw new Error('No token received');
+                }
+
+                console.log('FCM Token:', token);
+                fcmToken = token;
+                tokenStatus.innerHTML = '<span class="status-indicator status-connected"></span> Notifications enabled';
+                return token;
+            } catch (error) {
+                console.error('FCM Token Error:', error);
+                notificationPermission.style.display = 'block';
+                tokenStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Failed to get token';
+                
+                // Special handling for Brave
+                if (isBrave) {
+                    tokenStatus.innerHTML += '<br>Brave users: Check site permissions';
                 }
                 
-                fcmToken = await messaging.getToken();
-                console.log('FCM Token:', fcmToken);
-                return fcmToken;
-            } catch (error) {
-                console.error('Error getting FCM token:', error);
-                notificationPermission.style.display = 'block';
                 return null;
             }
         }
@@ -325,10 +429,10 @@
             }
             timeError.style.display = 'none';
             
-            // Get FCM token if not already available
+            // Ensure we have a token
             if (!fcmToken) {
-                fcmToken = await getFCMToken();
-                if (!fcmToken) {
+                const tokenResult = await requestNotificationPermission();
+                if (!tokenResult) {
                     alert('Please enable notifications to schedule reminders');
                     return;
                 }
@@ -366,6 +470,8 @@
 
         // Load appointments from Firebase
         function loadAppointments() {
+            if (!fcmToken) return;
+            
             database.ref('appointments').orderByChild('timestamp').on('value', (snapshot) => {
                 const appointments = [];
                 snapshot.forEach((childSnapshot) => {

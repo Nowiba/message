@@ -6,24 +6,25 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js')
 firebase.initializeApp({
   apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
   authDomain: "information-project1.firebaseapp.com",
-  databaseURL: "https://information-project1-default-rtdb.firebaseio.com",
   projectId: "information-project1",
   storageBucket: "information-project1.firebasestorage.app",
   messagingSenderId: "1098270976013",
   appId: "1:1098270976013:web:2e1ca7602b316b6ed30d44",
   measurementId: "G-YFL07VDXCX"
-};
+});
 
 const messaging = firebase.messaging();
 
 // Background message handler
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message', payload);
+  console.log('[Service Worker] Received background message', payload);
   
   // Customize notification
   const notificationTitle = payload.notification?.title || 'Appointment Reminder';
+  const notificationBody = payload.notification?.body || 'You have an upcoming appointment';
+  
   const notificationOptions = {
-    body: payload.notification?.body || 'You have an upcoming appointment',
+    body: notificationBody,
     icon: '/icons/icon-192x192.png',
     data: { 
       url: payload.notification?.click_action || '/' 
@@ -36,7 +37,23 @@ messaging.setBackgroundMessageHandler(function(payload) {
 // Handle notification clicks
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  
+  const urlToOpen = event.notification.data.url;
+  
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    clients.matchAll({type: 'window'}).then(windowClients => {
+      // Check if there's already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // If no matching window is found, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
   );
 });

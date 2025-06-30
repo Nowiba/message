@@ -3,442 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appointment Booking System</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📅</text></svg>">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <title>Appointment Reminder</title>
     <style>
+        /* CSS Styles */
         :root {
-            --primary: #4361ee;
-            --secondary: #3f37c9;
-            --accent: #4895ef;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --success: #4cc9f0;
-            --warning: #f72585;
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --error-color: #ea4335;
+            --background-color: #f5f5f5;
+            --card-color: #ffffff;
+            --text-color: #333333;
         }
-        
+
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto', Arial, sans-serif;
         }
-        
+
         body {
-            background: linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%);
-            min-height: 100vh;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%234361ee" opacity="0.05"/><path d="M20,20 Q50,5 80,20 L80,80 Q50,95 20,80 Z" fill="none" stroke="%234361ee" stroke-width="1" opacity="0.1"/></svg>');
         }
-        
+
         .container {
-            max-width: 1000px;
-            width: 100%;
+            max-width: 800px;
             margin: 0 auto;
+            padding: 20px;
         }
-        
-        .card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(67, 97, 238, 0.2);
-            padding: 30px;
-            transition: transform 0.3s ease;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        
-        header {
+
+        h1 {
             text-align: center;
             margin-bottom: 30px;
+            color: var(--primary-color);
         }
-        
-        h1 {
-            color: var(--primary);
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+
+        .card {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 30px;
         }
-        
-        .subtitle {
-            color: var(--dark);
-            font-size: 1.1rem;
-            opacity: 0.8;
-            margin-bottom: 20px;
-        }
-        
-        .form-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-        
-        @media (max-width: 768px) {
-            .form-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--dark);
+            font-weight: 500;
         }
-        
-        input, select, textarea {
+
+        input[type="datetime-local"],
+        input[type="text"] {
             width: 100%;
-            padding: 14px;
-            background: rgba(255, 255, 255, 0.8);
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
             font-size: 16px;
-            transition: all 0.3s ease;
         }
-        
-        input:focus, select:focus, textarea:focus {
-            border-color: var(--accent);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-            background: white;
-        }
-        
+
         button {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 16px 30px;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 10px;
+            padding: 12px 20px;
+            border-radius: 4px;
             cursor: pointer;
+            font-size: 16px;
             width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(67, 97, 238, 0.3);
-            margin-top: 10px;
+            transition: background-color 0.3s;
         }
-        
+
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(67, 97, 238, 0.4);
+            background-color: #3367d6;
         }
-        
+
         button:disabled {
-            background: #cccccc;
+            background-color: #cccccc;
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
-        
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            max-width: 350px;
-        }
-        
-        .notification {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            animation: slideIn 0.3s ease;
-            border-left: 5px solid var(--primary);
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .notification.success {
-            border-left-color: #10b981;
-        }
-        
-        .notification.error {
-            border-left-color: #ef4444;
-        }
-        
-        .notification-icon {
-            margin-right: 15px;
-            font-size: 24px;
-        }
-        
+
         .appointments-list {
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: 10px;
-            margin-top: 20px;
-        }
-        
-        .appointment-item {
-            background: rgba(248, 250, 252, 0.7);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--accent);
-        }
-        
-        .appointment-item h3 {
-            color: var(--primary);
-            margin-bottom: 8px;
-        }
-        
-        .appointment-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 14px;
-        }
-        
-        .detail-item {
-            display: flex;
-            align-items: center;
-        }
-        
-        .detail-item i {
-            margin-right: 8px;
-            color: var(--accent);
-        }
-        
-        .permission-request {
-            background: rgba(224, 242, 254, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-        }
-        
-        .loader {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .status-connected {
-            background-color: #10b981;
-        }
-        
-        .status-disconnected {
-            background-color: #ef4444;
-        }
-        
-        .system-status {
             margin-top: 30px;
+        }
+
+        .appointment-item {
             padding: 15px;
-            background: rgba(241, 245, 249, 0.7);
-            border-radius: 10px;
-        }
-        
-        .firebase-logo {
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        .firebase-logo span {
-            font-weight: bold;
-            background: linear-gradient(45deg, #FFCA28, #FFA000, #F57C00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 1.2rem;
-        }
-        
-        .instructions {
-            background: rgba(255, 243, 205, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            font-size: 0.9rem;
-        }
-        
-        .instructions h3 {
-            margin-bottom: 10px;
-            color: #856404;
-        }
-        
-        .instructions ol {
-            padding-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 8px;
-        }
-        
-        .notification-options {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .notification-options button {
-            flex: 1;
-            padding: 10px;
-            font-size: 14px;
-        }
-        
-        .appointment-header {
+            border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
         }
-        
-        .delete-btn {
-            background: #ef4444;
-            padding: 5px 10px;
-            font-size: 12px;
-            width: auto;
+
+        .appointment-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-permission {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            margin-top: 5px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success-message {
+            color: var(--secondary-color);
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
         }
     </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
 </head>
 <body>
     <div class="container">
+        <h1>Appointment Reminder</h1>
+        
+        <div class="notification-permission" id="notificationPermission">
+            <p>Please enable notifications to receive appointment reminders.</p>
+            <button id="enableNotificationsBtn">Enable Notifications</button>
+        </div>
+
         <div class="card">
-            <div class="firebase-logo">
-                <span>Firebase Realtime Database</span>
-            </div>
-            <header>
-                <h1>Appointment Booking</h1>
-                <p class="subtitle">Book your appointment with real-time updates</p>
-            </header>
-            
-            <div class="form-container">
-                <div>
-                    <form id="appointmentForm">
-                        <div class="form-group">
-                            <label for="name">Full Name</label>
-                            <input type="text" id="name" placeholder="Enter your full name" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <input type="email" id="email" placeholder="Enter your email" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="phone">Phone Number</label>
-                            <input type="tel" id="phone" placeholder="Enter your phone number" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="service">Service Type</label>
-                            <select id="service" required>
-                                <option value="">Select a service</option>
-                                <option value="consultation">Consultation</option>
-                                <option value="checkup">Routine Checkup</option>
-                                <option value="treatment">Treatment</option>
-                                <option value="followup">Follow-up Visit</option>
-                            </select>
-                        </div>
-                    </form>
+            <h2>Schedule New Appointment</h2>
+            <form id="appointmentForm">
+                <div class="form-group">
+                    <label for="appointmentTitle">Title (Optional)</label>
+                    <input type="text" id="appointmentTitle" placeholder="Dentist, Meeting, etc.">
                 </div>
-                
-                <div>
-                    <form id="appointmentForm2">
-                        <div class="form-group">
-                            <label for="date">Appointment Date</label>
-                            <input type="date" id="date" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="time">Preferred Time</label>
-                            <select id="time" required>
-                                <option value="">Select a time</option>
-                                <option value="09:00">9:00 AM</option>
-                                <option value="10:00">10:00 AM</option>
-                                <option value="11:00">11:00 AM</option>
-                                <option value="13:00">1:00 PM</option>
-                                <option value="14:00">2:00 PM</option>
-                                <option value="15:00">3:00 PM</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="notes">Additional Notes</label>
-                            <textarea id="notes" rows="3" placeholder="Any special requests or information"></textarea>
-                        </div>
-                        
-                        <button type="submit" id="submitBtn">Book Appointment</button>
-                    </form>
+                <div class="form-group">
+                    <label for="appointmentTime">Date & Time</label>
+                    <input type="datetime-local" id="appointmentTime" required>
+                    <div class="error-message" id="timeError">Please select a future date and time</div>
                 </div>
-            </div>
-            
-            <div class="permission-request">
-                <p>Enable browser notifications to receive appointment reminders</p>
-                <div class="notification-options">
-                    <button type="button" id="enableNotifications">Enable Notifications</button>
-                    <button type="button" id="testNotification">Test Notification</button>
-                </div>
-            </div>
-            
-            <div class="instructions">
-                <h3>How Notifications Work:</h3>
-                <ol>
-                    <li>Click "Enable Notifications" to grant permission</li>
-                    <li>After booking, you'll receive a confirmation notification</li>
-                    <li>Notifications work when the browser is open</li>
-                    <li>No Firebase Cloud Messaging required</li>
-                </ol>
-            </div>
-            
-            <div class="system-status">
-                <h3>System Status</h3>
-                <p id="firebaseStatus">Checking Firebase connection...</p>
-                <p id="notificationStatus">Notification permission: Not granted</p>
+                <button type="submit" id="submitBtn">Schedule Appointment</button>
+            </form>
+            <div class="success-message" id="successMessage">
+                Appointment scheduled successfully! You'll receive a notification 30 minutes before.
             </div>
         </div>
-        
-        <div class="card" style="margin-top: 30px;">
+
+        <div class="card appointments-list">
             <h2>Your Appointments</h2>
-            <p class="subtitle">Upcoming and past bookings</p>
-            
-            <div class="appointments-list" id="appointmentsList">
-                <p>Loading appointments...</p>
+            <div id="appointmentsContainer">
+                <p id="noAppointments">No appointments scheduled yet.</p>
+                <!-- Appointments will be added here dynamically -->
             </div>
         </div>
     </div>
-    
-    <div class="notification-container" id="notificationContainer"></div>
 
     <script>
-        // Firebase configuration
+        // Firebase Configuration
         const firebaseConfig = {
   apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
   authDomain: "information-project1.firebaseapp.com",
@@ -453,260 +195,216 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        
-        // DOM elements
+        const messaging = firebase.messaging();
+
+        // DOM Elements
         const appointmentForm = document.getElementById('appointmentForm');
-        const appointmentForm2 = document.getElementById('appointmentForm2');
-        const appointmentsList = document.getElementById('appointmentsList');
+        const appointmentTime = document.getElementById('appointmentTime');
+        const appointmentTitle = document.getElementById('appointmentTitle');
         const submitBtn = document.getElementById('submitBtn');
-        const notificationContainer = document.getElementById('notificationContainer');
-        const enableNotificationsBtn = document.getElementById('enableNotifications');
-        const testNotificationBtn = document.getElementById('testNotification');
-        const firebaseStatus = document.getElementById('firebaseStatus');
-        const notificationStatus = document.getElementById('notificationStatus');
-        
-        // Set min date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('date').setAttribute('min', today);
-        
-        // Check Firebase connection
-        database.ref('.info/connected').on('value', (snapshot) => {
-            if (snapshot.val() === true) {
-                firebaseStatus.innerHTML = '<span class="status-indicator status-connected"></span>Firebase Realtime Database connected';
-            } else {
-                firebaseStatus.innerHTML = '<span class="status-indicator status-disconnected"></span>Firebase connection lost';
+        const timeError = document.getElementById('timeError');
+        const successMessage = document.getElementById('successMessage');
+        const notificationPermission = document.getElementById('notificationPermission');
+        const enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
+        const appointmentsContainer = document.getElementById('appointmentsContainer');
+        const noAppointments = document.getElementById('noAppointments');
+
+        // Set minimum datetime to current time
+        const now = new Date();
+        const timezoneOffset = now.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(now - timezoneOffset).toISOString().slice(0, 16);
+        appointmentTime.min = localISOTime;
+
+        // Global variables
+        let fcmToken = null;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            checkNotificationPermission();
+            loadAppointments();
+            
+            // Register service worker for notifications
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('firebase-messaging-sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered');
+                        messaging.useServiceWorker(registration);
+                    })
+                    .catch(err => console.log('Service Worker registration failed: ', err));
             }
+
+            // Handle form submission
+            appointmentForm.addEventListener('submit', scheduleAppointment);
+            
+            // Handle notification permission request
+            enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
         });
-        
-        // Show browser notification
-        function showBrowserNotification(title, body) {
-            if (!("Notification" in window)) {
-                console.log("This browser does not support desktop notification");
+
+        // Check notification permission status
+        function checkNotificationPermission() {
+            if (Notification.permission === 'denied') {
+                notificationPermission.style.display = 'block';
+            } else if (Notification.permission === 'granted') {
+                notificationPermission.style.display = 'none';
+                getFCMToken();
+            }
+        }
+
+        // Request notification permission
+        async function requestNotificationPermission() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    notificationPermission.style.display = 'none';
+                    getFCMToken();
+                } else {
+                    alert('Notifications are required for appointment reminders. Please enable them in your browser settings.');
+                }
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+            }
+        }
+
+        // Get FCM token
+        async function getFCMToken() {
+            try {
+                fcmToken = await messaging.getToken();
+                console.log('FCM Token:', fcmToken);
+            } catch (error) {
+                console.error('Error getting FCM token:', error);
+            }
+        }
+
+        // Schedule new appointment
+        async function scheduleAppointment(e) {
+            e.preventDefault();
+            
+            // Validate time
+            const selectedTime = new Date(appointmentTime.value);
+            if (selectedTime <= now) {
+                timeError.style.display = 'block';
+                return;
+            }
+            timeError.style.display = 'none';
+            
+            if (!fcmToken) {
+                alert('Please enable notifications to schedule reminders');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Scheduling...';
+
+            try {
+                const title = appointmentTitle.value.trim() || 'Appointment';
+                const appointmentRef = database.ref('appointments').push();
+                
+                await appointmentRef.set({
+                    title: title,
+                    timestamp: selectedTime.toISOString(),
+                    fcmToken: fcmToken,
+                    reminderSent: false
+                });
+                
+                // Show success and reset form
+                successMessage.style.display = 'block';
+                appointmentForm.reset();
+                setTimeout(() => successMessage.style.display = 'none', 3000);
+                
+                // Reload appointments
+                loadAppointments();
+            } catch (error) {
+                console.error('Error scheduling appointment:', error);
+                alert('Failed to schedule appointment. Please try again.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Schedule Appointment';
+            }
+        }
+
+        // Load appointments from Firebase
+        function loadAppointments() {
+            database.ref('appointments').orderByChild('timestamp').on('value', (snapshot) => {
+                const appointments = [];
+                snapshot.forEach((childSnapshot) => {
+                    const appointment = childSnapshot.val();
+                    if (appointment.fcmToken === fcmToken) {
+                        appointments.push({
+                            id: childSnapshot.key,
+                            ...appointment
+                        });
+                    }
+                });
+                
+                renderAppointments(appointments);
+            });
+        }
+
+        // Render appointments list
+        function renderAppointments(appointments) {
+            if (appointments.length === 0) {
+                noAppointments.style.display = 'block';
+                appointmentsContainer.innerHTML = '';
                 return;
             }
             
-            if (Notification.permission === "granted") {
-                new Notification(title, { body });
-            }
-        }
-        
-        // Show in-app notification
-        function showAppNotification(title, message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <div class="notification-icon">🔔</div>
-                <div>
-                    <strong>${title}</strong>
-                    <p>${message}</p>
-                </div>
-            `;
+            noAppointments.style.display = 'none';
             
-            notificationContainer.appendChild(notification);
+            // Sort by date (soonest first)
+            appointments.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.5s ease';
-                setTimeout(() => {
-                    notification.remove();
-                }, 500);
-            }, 5000);
-        }
-        
-        // Add CSS for fadeOut
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut {
-                from { opacity: 1; }
-                to { opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Request notification permission
-        function requestNotificationPermission() {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    showAppNotification('Notifications enabled', 'You will receive appointment reminders');
-                    notificationStatus.textContent = 'Notification permission: Granted';
-                    
-                    // Show a test notification
-                    setTimeout(() => {
-                        showBrowserNotification('Notifications Enabled', 'You will now receive appointment confirmations and reminders!');
-                    }, 1000);
-                } else {
-                    showAppNotification('Permission not granted', 'You can enable notifications later in your browser settings', 'error');
-                    notificationStatus.textContent = 'Notification permission: Not granted';
-                }
+            let html = '';
+            appointments.forEach(appointment => {
+                const date = new Date(appointment.timestamp);
+                const formattedDate = date.toLocaleString();
+                
+                html += `
+                    <div class="appointment-item">
+                        <div>
+                            <strong>${appointment.title}</strong>
+                            <div>${formattedDate}</div>
+                        </div>
+                        <button class="delete-btn" data-id="${appointment.id}">Delete</button>
+                    </div>
+                `;
+            });
+            
+            appointmentsContainer.innerHTML = html;
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', deleteAppointment);
             });
         }
-        
-        // Test notification button
-        testNotificationBtn.addEventListener('click', () => {
-            if (Notification.permission === 'granted') {
-                showBrowserNotification('Test Notification', 'This is a test notification from the appointment system!');
-            } else {
-                showAppNotification('Permission required', 'Please enable notifications first', 'error');
-            }
-        });
-        
-        // Submit appointment form
-        function submitAppointment(e) {
-            e.preventDefault();
-            
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const phone = document.getElementById('phone').value;
-            const service = document.getElementById('service').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
-            const notes = document.getElementById('notes').value;
-            
-            // Original button text
-            const originalBtnText = submitBtn.textContent;
-            
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<div class="loader"></div> Processing...';
-            
-            try {
-                // Save to Realtime Database
-                const newAppointmentRef = database.ref('appointments').push();
-                newAppointmentRef.set({
-                    name,
-                    email,
-                    phone,
-                    service,
-                    date,
-                    time,
-                    notes,
-                    createdAt: new Date().toISOString(),
-                    status: 'confirmed'
-                }).then(() => {
-                    // Show success notification
-                    showAppNotification('Appointment Booked!', `Your ${service} appointment is confirmed for ${date} at ${time}`);
-                    
-                    // Reset form
-                    document.getElementById('appointmentForm').reset();
-                    document.getElementById('appointmentForm2').reset();
-                    
-                    // Send browser notification
-                    if (Notification.permission === 'granted') {
-                        showBrowserNotification('Appointment Confirmed', `Hello ${name}, your appointment is confirmed for ${date} at ${time}`);
-                    }
-                    
-                    // Refresh appointments list
-                    loadAppointments();
-                    
-                    // Restore button
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalBtnText;
-                }).catch(error => {
-                    showAppNotification('Error', 'Failed to book appointment: ' + error.message, 'error');
-                    console.error('Error adding appointment: ', error);
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalBtnText;
-                });
-                
-            } catch (error) {
-                showAppNotification('Error', 'Failed to book appointment: ' + error.message, 'error');
-                console.error('Error adding appointment: ', error);
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalBtnText;
-            }
-        }
-        
-        // Handle form submissions
-        appointmentForm.addEventListener('submit', submitAppointment);
-        appointmentForm2.addEventListener('submit', submitAppointment);
-        
-        // Enable notifications button
-        enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
-        
+
         // Delete appointment
-        function deleteAppointment(key) {
+        async function deleteAppointment(e) {
+            const appointmentId = e.target.getAttribute('data-id');
             if (confirm('Are you sure you want to delete this appointment?')) {
-                database.ref(`appointments/${key}`).remove()
-                    .then(() => {
-                        showAppNotification('Appointment Deleted', 'Your appointment has been removed');
-                        loadAppointments();
-                    })
-                    .catch(error => {
-                        showAppNotification('Error', 'Failed to delete appointment: ' + error.message, 'error');
-                        console.error('Error deleting appointment: ', error);
-                    });
+                try {
+                    await database.ref(`appointments/${appointmentId}`).remove();
+                } catch (error) {
+                    console.error('Error deleting appointment:', error);
+                    alert('Failed to delete appointment. Please try again.');
+                }
             }
         }
-        
-        // Load appointments
-        function loadAppointments() {
-            appointmentsList.innerHTML = '<p>Loading appointments...</p>';
+
+        // Handle incoming messages when app is in foreground
+        messaging.onMessage((payload) => {
+            console.log('Message received in foreground', payload);
+            const notificationTitle = payload.notification.title;
+            const notificationOptions = {
+                body: payload.notification.body,
+                icon: '/icons/icon-192x192.png'
+            };
             
-            database.ref('appointments').orderByChild('createdAt').once('value')
-                .then(snapshot => {
-                    if (!snapshot.exists()) {
-                        appointmentsList.innerHTML = '<p>No appointments found. Book your first appointment!</p>';
-                        return;
-                    }
-                    
-                    let html = '';
-                    const appointments = [];
-                    
-                    snapshot.forEach(childSnapshot => {
-                        const data = childSnapshot.val();
-                        data.key = childSnapshot.key;
-                        appointments.push(data);
-                    });
-                    
-                    // Sort by date (newest first)
-                    appointments.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    
-                    appointments.forEach(data => {
-                        const date = new Date(data.date).toLocaleDateString();
-                        const time = data.time;
-                        
-                        html += `
-                            <div class="appointment-item">
-                                <div class="appointment-header">
-                                    <h3>${data.service}</h3>
-                                    <button class="delete-btn" onclick="deleteAppointment('${data.key}')">Delete</button>
-                                </div>
-                                <div class="appointment-details">
-                                    <div class="detail-item"><i>👤</i> ${data.name}</div>
-                                    <div class="detail-item"><i>📅</i> ${date}</div>
-                                    <div class="detail-item"><i>⏰</i> ${time}</div>
-                                    <div class="detail-item"><i>📱</i> ${data.phone}</div>
-                                </div>
-                                ${data.notes ? `<p style="margin-top:10px;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
-                                <p style="margin-top:10px; color:#666; font-size:0.9rem">
-                                    <i>Booked on: ${new Date(data.createdAt).toLocaleString()}</i>
-                                </p>
-                            </div>
-                        `;
-                    });
-                    
-                    appointmentsList.innerHTML = html;
-                })
-                .catch(error => {
-                    appointmentsList.innerHTML = '<p>Error loading appointments. Please try again later.</p>';
-                    console.error('Error getting appointments: ', error);
-                });
-        }
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAppointments();
-            
-            // Check notification permission status
-            if (Notification.permission === 'granted') {
-                notificationStatus.textContent = 'Notification permission: Granted';
-            } else {
-                notificationStatus.textContent = 'Notification permission: Not granted';
+            if (!("Notification" in window)) {
+                console.log("This browser does not support system notifications");
+            } else if (Notification.permission === "granted") {
+                new Notification(notificationTitle, notificationOptions);
             }
         });
-        
-        // Make deleteAppointment function available globally
-        window.deleteAppointment = deleteAppointment;
     </script>
 </body>
 </html>

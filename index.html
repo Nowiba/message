@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Booking System</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📅</text></svg>">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
     <style>
         :root {
@@ -16,6 +17,7 @@
             --dark: #212529;
             --success: #4cc9f0;
             --warning: #f72585;
+            --card-bg: rgba(255, 255, 255, 0.92);
         }
         
         * {
@@ -26,12 +28,13 @@
         }
         
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #e0f7fa 0%, #bbdefb 100%);
             min-height: 100vh;
             padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%234361ee" opacity="0.05"/><path d="M20,20 L80,20 L80,80 L20,80 Z" fill="none" stroke="%234361ee" stroke-width="2" opacity="0.1"/></svg>');
         }
         
         .container {
@@ -50,11 +53,13 @@
         }
         
         .card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(67, 97, 238, 0.2);
             padding: 30px;
             transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
         
         .card:hover {
@@ -77,7 +82,7 @@
         
         .subtitle {
             color: var(--dark);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             opacity: 0.8;
         }
         
@@ -95,6 +100,7 @@
         input, select, textarea {
             width: 100%;
             padding: 14px;
+            background: rgba(255, 255, 255, 0.8);
             border: 2px solid #e2e8f0;
             border-radius: 10px;
             font-size: 16px;
@@ -105,6 +111,7 @@
             border-color: var(--accent);
             outline: none;
             box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+            background: white;
         }
         
         button {
@@ -184,7 +191,7 @@
         }
         
         .appointment-item {
-            background: #f8fafc;
+            background: rgba(248, 250, 252, 0.7);
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 15px;
@@ -214,7 +221,7 @@
         }
         
         .permission-request {
-            background: #e0f2fe;
+            background: rgba(224, 242, 254, 0.7);
             padding: 15px;
             border-radius: 10px;
             margin-top: 20px;
@@ -251,14 +258,58 @@
         .status-disconnected {
             background-color: #ef4444;
         }
+        
+        .system-status {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(241, 245, 249, 0.7);
+            border-radius: 10px;
+        }
+        
+        .firebase-logo {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .firebase-logo span {
+            font-weight: bold;
+            background: linear-gradient(45deg, #FFCA28, #FFA000, #F57C00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.2rem;
+        }
+        
+        .instructions {
+            background: rgba(255, 243, 205, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
+            <div class="firebase-logo">
+                <span>Firebase Realtime Database</span>
+            </div>
             <header>
                 <h1>Book Your Appointment</h1>
-                <p class="subtitle">Schedule your visit with us in minutes</p>
+                <p class="subtitle">Schedule your visit with real-time updates</p>
             </header>
             
             <form id="appointmentForm">
@@ -317,6 +368,16 @@
                     <p>Enable notifications to receive appointment reminders</p>
                     <button type="button" id="enableNotifications">Enable Notifications</button>
                 </div>
+                
+                <div class="instructions">
+                    <h3>How Push Notifications Work:</h3>
+                    <ol>
+                        <li>Click "Enable Notifications" to grant permission</li>
+                        <li>After booking, you'll receive a confirmation notification</li>
+                        <li>Notifications work even when browser is closed</li>
+                        <li>Requires HTTPS and service worker support</li>
+                    </ol>
+                </div>
             </form>
         </div>
         
@@ -328,10 +389,11 @@
                 <p>Loading appointments...</p>
             </div>
             
-            <div style="margin-top: 30px; padding: 15px; background: #f1f5f9; border-radius: 10px;">
+            <div class="system-status">
                 <h3>System Status</h3>
                 <p id="firebaseStatus">Checking Firebase connection...</p>
                 <p id="notificationStatus">Notification permission: Not granted</p>
+                <p id="serviceWorkerStatus">Service worker: Not registered</p>
             </div>
         </div>
     </div>
@@ -353,7 +415,7 @@
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const database = firebase.database();
         const messaging = firebase.messaging();
         
         // DOM elements
@@ -364,19 +426,36 @@
         const enableNotificationsBtn = document.getElementById('enableNotifications');
         const firebaseStatus = document.getElementById('firebaseStatus');
         const notificationStatus = document.getElementById('notificationStatus');
+        const serviceWorkerStatus = document.getElementById('serviceWorkerStatus');
         
         // Set min date to today
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('date').setAttribute('min', today);
         
         // Check Firebase connection
-        db.collection("testConnection").doc("test").get()
-            .then(() => {
-                firebaseStatus.innerHTML = '<span class="status-indicator status-connected"></span>Firebase connected successfully';
-            })
-            .catch((error) => {
-                firebaseStatus.innerHTML = '<span class="status-indicator status-disconnected"></span>Firebase connection error: ' + error.message;
-            });
+        database.ref('.info/connected').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                firebaseStatus.innerHTML = '<span class="status-indicator status-connected"></span>Firebase Realtime Database connected';
+            } else {
+                firebaseStatus.innerHTML = '<span class="status-indicator status-disconnected"></span>Firebase connection lost';
+            }
+        });
+        
+        // Register service worker for push notifications
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('firebase-messaging-sw.js')
+                .then(registration => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                    serviceWorkerStatus.textContent = 'Service worker: Registered';
+                    messaging.useServiceWorker(registration);
+                })
+                .catch(error => {
+                    console.error('Service Worker registration failed:', error);
+                    serviceWorkerStatus.textContent = 'Service worker: Registration failed';
+                });
+        } else {
+            serviceWorkerStatus.textContent = 'Service worker: Not supported';
+        }
         
         // Request notification permission
         function requestNotificationPermission() {
@@ -389,6 +468,11 @@
                     messaging.getToken({vapidKey: 'BEl62iUYgUivxIkv39yEeD7l8F1lCbCzKLneVZoD2yRrL-c8dKpG2vVQ2lqkqXqD4Zqy5TkZ1XoGdZ1XoGdZ1Xo'}).then((currentToken) => {
                         if (currentToken) {
                             console.log('FCM Token:', currentToken);
+                            // Store token in Realtime DB
+                            database.ref('fcmTokens').push({
+                                token: currentToken,
+                                createdAt: new Date().toISOString()
+                            });
                         } else {
                             console.log('No registration token available.');
                         }
@@ -461,8 +545,9 @@
             submitBtn.innerHTML = '<div class="loader"></div> Processing...';
             
             try {
-                // Save to Firestore
-                const docRef = await db.collection('appointments').add({
+                // Save to Realtime Database
+                const newAppointmentRef = database.ref('appointments').push();
+                await newAppointmentRef.set({
                     name,
                     email,
                     phone,
@@ -470,7 +555,7 @@
                     date,
                     time,
                     notes,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAt: new Date().toISOString(),
                     status: 'confirmed'
                 });
                 
@@ -480,10 +565,15 @@
                 // Reset form
                 appointmentForm.reset();
                 
-                // Simulate sending a push notification
+                // Send push notification
                 if (Notification.permission === 'granted') {
+                    // In a real app, you would use Cloud Functions to send the notification
+                    // This is a simulation that will work for foreground notifications
                     setTimeout(() => {
                         showNotification('Appointment Confirmed', `Hello ${name}, your appointment is confirmed for ${date} at ${time}`);
+                        
+                        // This would be the actual push notification sent via FCM
+                        console.log('Push notification would be sent now to all devices');
                     }, 2000);
                 }
                 
@@ -492,7 +582,7 @@
                 
             } catch (error) {
                 showNotification('Error', 'Failed to book appointment: ' + error.message, 'error');
-                console.error('Error adding document: ', error);
+                console.error('Error adding appointment: ', error);
             } finally {
                 // Restore button
                 submitBtn.disabled = false;
@@ -504,43 +594,41 @@
         enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
         
         // Load appointments
-        async function loadAppointments() {
-            try {
-                const querySnapshot = await db.collection('appointments')
-                    .orderBy('createdAt', 'desc')
-                    .limit(5)
-                    .get();
-                
-                if (querySnapshot.empty) {
-                    appointmentsList.innerHTML = '<p>No appointments found. Book your first appointment!</p>';
-                    return;
-                }
-                
-                let html = '';
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    const date = new Date(data.date).toLocaleDateString();
+        function loadAppointments() {
+            appointmentsList.innerHTML = '<p>Loading appointments...</p>';
+            
+            database.ref('appointments').orderByChild('createdAt').limitToLast(5).once('value')
+                .then(snapshot => {
+                    if (!snapshot.exists()) {
+                        appointmentsList.innerHTML = '<p>No appointments found. Book your first appointment!</p>';
+                        return;
+                    }
                     
-                    html += `
-                        <div class="appointment-item">
-                            <h3>${data.service}</h3>
-                            <div class="appointment-details">
-                                <div class="detail-item"><i>👤</i> ${data.name}</div>
-                                <div class="detail-item"><i>📅</i> ${date}</div>
-                                <div class="detail-item"><i>⏰</i> ${data.time}</div>
-                                <div class="detail-item"><i>📱</i> ${data.phone}</div>
+                    let html = '';
+                    snapshot.forEach(childSnapshot => {
+                        const data = childSnapshot.val();
+                        const date = new Date(data.date).toLocaleDateString();
+                        
+                        html += `
+                            <div class="appointment-item">
+                                <h3>${data.service}</h3>
+                                <div class="appointment-details">
+                                    <div class="detail-item"><i>👤</i> ${data.name}</div>
+                                    <div class="detail-item"><i>📅</i> ${date}</div>
+                                    <div class="detail-item"><i>⏰</i> ${data.time}</div>
+                                    <div class="detail-item"><i>📱</i> ${data.phone}</div>
+                                </div>
+                                ${data.notes ? `<p style="margin-top:10px;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
                             </div>
-                            ${data.notes ? `<p style="margin-top:10px;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
-                        </div>
-                    `;
+                        `;
+                    });
+                    
+                    appointmentsList.innerHTML = html;
+                })
+                .catch(error => {
+                    appointmentsList.innerHTML = '<p>Error loading appointments. Please try again later.</p>';
+                    console.error('Error getting appointments: ', error);
                 });
-                
-                appointmentsList.innerHTML = html;
-                
-            } catch (error) {
-                appointmentsList.innerHTML = '<p>Error loading appointments. Please try again later.</p>';
-                console.error('Error getting documents: ', error);
-            }
         }
         
         // Initialize
@@ -550,6 +638,15 @@
             // Check notification permission status
             if (Notification.permission === 'granted') {
                 notificationStatus.textContent = 'Notification permission: Granted';
+                // Get token if permission already granted
+                messaging.getToken().then(currentToken => {
+                    if (currentToken) {
+                        database.ref('fcmTokens').push({
+                            token: currentToken,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                });
             } else {
                 notificationStatus.textContent = 'Notification permission: Not granted';
             }

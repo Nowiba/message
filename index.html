@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Booking System</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --warning: #f72585;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 0 auto;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: var(--dark);
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        button {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 16px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(67, 97, 238, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(67, 97, 238, 0.4);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 350px;
+        }
+        
+        .notification {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+            border-left: 5px solid var(--primary);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification.success {
+            border-left-color: #4ade80;
+        }
+        
+        .notification.error {
+            border-left-color: #f87171;
+        }
+        
+        .notification-icon {
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        
+        .appointments-list {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .appointment-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .appointment-item h3 {
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        
+        .appointment-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .detail-item i {
+            margin-right: 8px;
+            color: var(--accent);
+        }
+        
+        .permission-request {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background-color: #10b981;
+        }
+        
+        .status-disconnected {
+            background-color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>Book Your Appointment</h1>
+                <p class="subtitle">Schedule your visit with us in minutes</p>
+            </header>
+            
+            <form id="appointmentForm">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" placeholder="Enter your phone number" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="service">Service Type</label>
+                    <select id="service" required>
+                        <option value="">Select a service</option>
+                        <option value="consultation">Consultation</option>
+                        <option value="checkup">Routine Checkup</option>
+                        <option value="treatment">Treatment</option>
+                        <option value="followup">Follow-up Visit</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="date">Appointment Date</label>
+                    <input type="date" id="date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="time">Preferred Time</label>
+                    <select id="time" required>
+                        <option value="">Select a time</option>
+                        <option value="09:00">9:00 AM</option>
+                        <option value="10:00">10:00 AM</option>
+                        <option value="11:00">11:00 AM</option>
+                        <option value="13:00">1:00 PM</option>
+                        <option value="14:00">2:00 PM</option>
+                        <option value="15:00">3:00 PM</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Additional Notes</label>
+                    <textarea id="notes" rows="3" placeholder="Any special requests or information"></textarea>
+                </div>
+                
+                <button type="submit" id="submitBtn">Book Appointment</button>
+                
+                <div class="permission-request">
+                    <p>Enable notifications to receive appointment reminders</p>
+                    <button type="button" id="enableNotifications">Enable Notifications</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Recent Appointments</h2>
+            <p class="subtitle">Your upcoming and past bookings</p>
+            
+            <div class="appointments-list" id="appointmentsList">
+                <p>Loading appointments...</p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 15px; background: #f1f5f9; border-radius: 10px;">
+                <h3>System Status</h3>
+                <p id="firebaseStatus">Checking Firebase connection...</p>
+                <p id="notificationStatus">Notification permission: Not granted</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD7XWXLLnTgB20snEibDk7-1qhye7DLYZg",
+            authDomain: "information-project1.firebaseapp.com",
+            databaseURL: "https://information-project1-default-rtdb.firebaseio.com",
+            projectId: "information-project1",
+            storageBucket: "information-project1.firebasestorage.app",
+            messagingSenderId: "1098270976013",
+            appId: "1:1098270976013:web:2e8e6919576ba984d30d44",
+            measurementId: "G-PTMWBR2Y01"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const messaging = firebase.messaging();
+        
+        // DOM elements
+        const appointmentForm = document.getElementById('appointmentForm');
+        const appointmentsList = document.getElementById('appointmentsList');
+        const submitBtn = document.getElementById('submitBtn');
+        const notificationContainer = document.getElementById('notificationContainer');
+        const enableNotificationsBtn = document.getElementById('enableNotifications');
+        const firebaseStatus = document.getElementById('firebaseStatus');
+        const notificationStatus = document.getElementById('notificationStatus');
+        
+        // Set min date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date').setAttribute('min', today);
+        
+        // Check Firebase connection
+        db.collection("testConnection").doc("test").get()
+            .then(() => {
+                firebaseStatus.innerHTML = '<span class="status-indicator status-connected"></span>Firebase connected successfully';
+            })
+            .catch((error) => {
+                firebaseStatus.innerHTML = '<span class="status-indicator status-disconnected"></span>Firebase connection error: ' + error.message;
+            });
+        
+        // Request notification permission
+        function requestNotificationPermission() {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    showNotification('Notifications enabled', 'You will receive appointment reminders and updates');
+                    notificationStatus.textContent = 'Notification permission: Granted';
+                    
+                    // Get FCM token
+                    messaging.getToken({vapidKey: 'BEl62iUYgUivxIkv39yEeD7l8F1lCbCzKLneVZoD2yRrL-c8dKpG2vVQ2lqkqXqD4Zqy5TkZ1XoGdZ1XoGdZ1Xo'}).then((currentToken) => {
+                        if (currentToken) {
+                            console.log('FCM Token:', currentToken);
+                        } else {
+                            console.log('No registration token available.');
+                        }
+                    }).catch((err) => {
+                        console.log('An error occurred while retrieving token. ', err);
+                    });
+                    
+                    // Handle incoming messages
+                    messaging.onMessage((payload) => {
+                        console.log('Message received. ', payload);
+                        showNotification(payload.notification.title, payload.notification.body);
+                    });
+                } else {
+                    showNotification('Permission not granted', 'You can enable notifications later in your browser settings', 'error');
+                    notificationStatus.textContent = 'Notification permission: Not granted';
+                }
+            });
+        }
+        
+        // Show notification
+        function showNotification(title, message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-icon">🔔</div>
+                <div>
+                    <strong>${title}</strong>
+                    <p>${message}</p>
+                </div>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.5s ease';
+                setTimeout(() => {
+                    notification.remove();
+                }, 500);
+            }, 5000);
+        }
+        
+        // Add CSS for fadeOut
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Submit appointment form
+        appointmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const service = document.getElementById('service').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const notes = document.getElementById('notes').value;
+            
+            // Original button text
+            const originalBtnText = submitBtn.textContent;
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loader"></div> Processing...';
+            
+            try {
+                // Save to Firestore
+                const docRef = await db.collection('appointments').add({
+                    name,
+                    email,
+                    phone,
+                    service,
+                    date,
+                    time,
+                    notes,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'confirmed'
+                });
+                
+                // Show success notification
+                showNotification('Appointment Booked!', `Your ${service} appointment is confirmed for ${date} at ${time}`);
+                
+                // Reset form
+                appointmentForm.reset();
+                
+                // Simulate sending a push notification
+                if (Notification.permission === 'granted') {
+                    setTimeout(() => {
+                        showNotification('Appointment Confirmed', `Hello ${name}, your appointment is confirmed for ${date} at ${time}`);
+                    }, 2000);
+                }
+                
+                // Refresh appointments list
+                loadAppointments();
+                
+            } catch (error) {
+                showNotification('Error', 'Failed to book appointment: ' + error.message, 'error');
+                console.error('Error adding document: ', error);
+            } finally {
+                // Restore button
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
+            }
+        });
+        
+        // Enable notifications button
+        enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
+        
+        // Load appointments
+        async function loadAppointments() {
+            try {
+                const querySnapshot = await db.collection('appointments')
+                    .orderBy('createdAt', 'desc')
+                    .limit(5)
+                    .get();
+                
+                if (querySnapshot.empty) {
+                    appointmentsList.innerHTML = '<p>No appointments found. Book your first appointment!</p>';
+                    return;
+                }
+                
+                let html = '';
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const date = new Date(data.date).toLocaleDateString();
+                    
+                    html += `
+                        <div class="appointment-item">
+                            <h3>${data.service}</h3>
+                            <div class="appointment-details">
+                                <div class="detail-item"><i>👤</i> ${data.name}</div>
+                                <div class="detail-item"><i>📅</i> ${date}</div>
+                                <div class="detail-item"><i>⏰</i> ${data.time}</div>
+                                <div class="detail-item"><i>📱</i> ${data.phone}</div>
+                            </div>
+                            ${data.notes ? `<p style="margin-top:10px;"><strong>Notes:</strong> ${data.notes}</p>` : ''}
+                        </div>
+                    `;
+                });
+                
+                appointmentsList.innerHTML = html;
+                
+            } catch (error) {
+                appointmentsList.innerHTML = '<p>Error loading appointments. Please try again later.</p>';
+                console.error('Error getting documents: ', error);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAppointments();
+            
+            // Check notification permission status
+            if (Notification.permission === 'granted') {
+                notificationStatus.textContent = 'Notification permission: Granted';
+            } else {
+                notificationStatus.textContent = 'Notification permission: Not granted';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// Firebase service worker for handling push notifications
+// Import Firebase scripts in service worker
 importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
 
@@ -16,24 +16,25 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages
+// Background message handler (when app is not in focus)
 messaging.setBackgroundMessageHandler(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
   // Customize notification here
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification.title || 'Appointment Reminder';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: 'https://cdn-icons-png.flaticon.com/512/4117/4117732.png'
+    body: payload.notification.body || 'You have an upcoming appointment',
+    icon: '/icons/icon-192x192.png',
+    data: { url: payload.notification.click_action || '/' }
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 // Handle notification clicks
-self.addEventListener('notificationclick', event => {
+self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('https://your-website.com/appointments') // Replace with your URL
+    clients.openWindow(event.notification.data.url)
   );
 });

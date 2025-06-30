@@ -16,16 +16,18 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Background message handler (when app is not in focus)
+// Background message handler
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[firebase-messaging-sw.js] Received background message', payload);
   
-  // Customize notification here
-  const notificationTitle = payload.notification.title || 'Appointment Reminder';
+  // Customize notification
+  const notificationTitle = payload.notification?.title || 'Appointment Reminder';
   const notificationOptions = {
-    body: payload.notification.body || 'You have an upcoming appointment',
+    body: payload.notification?.body || 'You have an upcoming appointment',
     icon: '/icons/icon-192x192.png',
-    data: { url: payload.notification.click_action || '/' }
+    data: { 
+      url: payload.notification?.click_action || '/' 
+    }
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);

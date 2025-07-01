@@ -14,6 +14,10 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   console.log('Received background message', payload);
-  const { title, body } = payload.notification;
-  self.registration.showNotification(title, { body, icon: '/icons/icon-192x192.png' });
+  const notificationTitle = payload.notification?.title || 'Appointment Reminder';
+  const notificationOptions = {
+    body: payload.notification?.body || 'You have a new notification',
+    icon: '/icons/icon-192x192.png'
+  };
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

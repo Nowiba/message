@@ -6,186 +6,97 @@
     <title>Appointment Reminder</title>
     <link rel="manifest" href="/manifest.json">
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            width: 100%;
-            transition: background-color 0.3s;
-            margin-bottom: 10px;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        button.secondary {
-            background-color: #95a5a6;
-        }
-        button.secondary:hover {
-            background-color: #7f8c8d;
-        }
-        #notification-permission {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
-        }
-        .permission-granted {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .permission-denied {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        #appointment-list {
-            margin-top: 30px;
-        }
-        .appointment-item {
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            background-color: #f9f9f9;
-        }
-        .appointment-time {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-        .notification-status {
-            font-style: italic;
-            color: #7f8c8d;
-            font-size: 0.9em;
-        }
-        .hidden {
-            display: none;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; transition: background-color 0.3s; margin-bottom: 10px; }
+        button:hover { background-color: #2980b9; }
+        button.secondary { background-color: #95a5a6; }
+        button.secondary:hover { background-color: #7f8c8d; }
+        #notification-permission { margin-top: 20px; padding: 10px; border-radius: 4px; display: none; }
+        .permission-granted { background-color: #d4edda; color: #155724; }
+        .permission-denied { background-color: #f8d7da; color: #721c24; }
+        #appointment-list { margin-top: 30px; }
+        .appointment-item { padding: 15px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 10px; background-color: #f9f9f9; }
+        .appointment-time { font-weight: bold; color: #2c3e50; }
+        .notification-status { font-style: italic; color: #7f8c8d; font-size: 0.9em; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Appointment Reminder</h1>
-        
         <div id="notification-permission"></div>
-        
         <button id="enable-notifications-btn" class="secondary">Enable Notifications</button>
-        
         <div id="appointment-form" class="hidden">
             <div class="form-group">
                 <label for="name">Your Name</label>
                 <input type="text" id="name" placeholder="Enter your name" required>
             </div>
-            
             <div class="form-group">
                 <label for="appointment-time">Appointment Time</label>
                 <input type="datetime-local" id="appointment-time" required>
             </div>
-            
             <button id="schedule-btn">Schedule Appointment</button>
         </div>
-        
         <div id="appointment-list">
             <h2>Your Appointments</h2>
             <div id="appointments-container"></div>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
-    
     <script>
-        // Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
         const firebaseConfig = {
-  apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
-  authDomain: "information-project1.firebaseapp.com",
-  databaseURL: "https://information-project1-default-rtdb.firebaseio.com",
-  projectId: "information-project1",
-  storageBucket: "information-project1.firebasestorage.app",
-  messagingSenderId: "1098270976013",
-  appId: "1:1098270976013:web:2e1ca7602b316b6ed30d44"
-};
+            apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
+            authDomain: "information-project1.firebaseapp.com",
+            projectId: "information-project1",
+            storageBucket: "information-project1.appspot.com",
+            messagingSenderId: "1098270976013",
+            appId: "1:1098270976013:web:2e1ca7602b316b6ed30d44"
+        };
 
-        // Initialize Firebase
         let messaging;
-        
+        let isBrave = false;
+
+        // Detect Brave browser
+        (async () => {
+            isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
+        })();
+
         async function initializeFirebase() {
             try {
-                // Initialize Firebase
                 firebase.initializeApp(firebaseConfig);
                 
-                // Check if service workers are supported
                 if ('serviceWorker' in navigator) {
                     try {
-                        // Register the service worker
                         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                        console.log('Service Worker registered with scope:', registration.scope);
-                        
-                        // Initialize Firebase Messaging
                         messaging = firebase.messaging();
                         
-                        // Handle foreground messages
-                        messaging.onMessage((payload) => {
-                            console.log('Message received in foreground:', payload);
-                            showNotification(payload.notification.title, payload.notification.body);
-                        });
+                        if (isBrave) {
+                            const permission = await Notification.requestPermission();
+                            if (permission === 'granted') {
+                                console.log('Brave notifications enabled');
+                            }
+                        }
                         
                         return true;
                     } catch (swError) {
                         console.error('Service Worker registration failed:', swError);
                         return false;
                     }
-                } else {
-                    console.warn('Service workers are not supported in this browser');
-                    return false;
                 }
-            } catch (firebaseError) {
-                console.error('Firebase initialization error:', firebaseError);
+                return false;
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
                 return false;
             }
         }
-        
-        // Request notification permission
+
         async function requestNotificationPermission() {
             try {
                 const permission = await Notification.requestPermission();
@@ -205,35 +116,36 @@
                 console.error('Error requesting notification permission:', error);
             }
         }
-        
-        // Get FCM token
+
         async function getFCMToken() {
             try {
-                const currentToken = await messaging.getToken({ vapidKey: "BF0XL6TATWEVgiN1aZwrPws32D4AAxabxdRs0zXbKSarbfPlCIxpXjMC2F5ap52xFLDnP_TAYmInDPIM6vgzmeQ" });
+                if (isBrave) {
+                    const braveToken = 'brave-' + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem('fcmToken', braveToken);
+                    return braveToken;
+                }
+                
+                const currentToken = await messaging.getToken({ 
+                    vapidKey: "BF0XL6TATWEVgiN1aZwrPws32D4AAxabxdRs0zXbKSarbfPlCIxpXjMC2F5ap52xFLDnP_TAYmInDPIM6vgzmeQ"
+                });
+                
                 if (currentToken) {
-                    console.log('FCM Token:', currentToken);
                     localStorage.setItem('fcmToken', currentToken);
                     return currentToken;
-                } else {
-                    console.log('No registration token available. Request permission to generate one.');
-                    return null;
                 }
+                return null;
             } catch (error) {
-                console.error('An error occurred while retrieving token:', error);
+                console.error('Error getting token:', error);
                 return null;
             }
         }
-        
-        // Show notification
+
         function showNotification(title, body) {
             if (Notification.permission === 'granted') {
                 new Notification(title, { body });
-            } else {
-                console.log('Notification permission not granted');
             }
         }
-        
-        // Schedule appointment
+
         document.getElementById('schedule-btn').addEventListener('click', async () => {
             const name = document.getElementById('name').value.trim();
             const appointmentTime = document.getElementById('appointment-time').value;
@@ -249,32 +161,17 @@
                 return;
             }
             
-            const appointmentData = {
-                name: name,
-                timestamp: appointmentTime,
-                fcmToken: fcmToken,
-                reminderSent: false
-            };
-            
             try {
-                // Save appointment to backend
                 const response = await fetch('/appointments', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(appointmentData)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, timestamp: appointmentTime, fcmToken })
                 });
                 
                 if (response.ok) {
                     alert('Appointment scheduled successfully!');
+                    showNotification('Appointment Scheduled', `Your appointment is set for ${new Date(appointmentTime).toLocaleString()}`);
                     loadAppointments();
-                    
-                    // Show immediate confirmation
-                    showNotification(
-                        'Appointment Scheduled', 
-                        `Your appointment is set for ${new Date(appointmentTime).toLocaleString()}`
-                    );
                 } else {
                     throw new Error('Failed to schedule appointment');
                 }
@@ -283,13 +180,11 @@
                 alert('Failed to schedule appointment');
             }
         });
-        
-        // Load appointments
+
         async function loadAppointments() {
             try {
                 const response = await fetch('/appointments');
                 const appointments = await response.json();
-                
                 const container = document.getElementById('appointments-container');
                 container.innerHTML = '';
                 
@@ -301,7 +196,6 @@
                 for (const [id, appt] of Object.entries(appointments)) {
                     const apptElement = document.createElement('div');
                     apptElement.className = 'appointment-item';
-                    
                     const time = new Date(appt.timestamp).toLocaleString();
                     apptElement.innerHTML = `
                         <div class="appointment-time">${time}</div>
@@ -310,27 +204,20 @@
                             Reminder ${appt.reminderSent ? 'sent' : 'pending'}
                         </div>
                     `;
-                    
                     container.appendChild(apptElement);
                 }
             } catch (error) {
                 console.error('Error loading appointments:', error);
             }
         }
-        
+
         // Initialize the app
         document.addEventListener('DOMContentLoaded', async () => {
-            // Initialize Firebase and show notification button when ready
             const firebaseInitialized = await initializeFirebase();
-            
             document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
-                if (firebaseInitialized) {
-                    await requestNotificationPermission();
-                } else {
-                    alert('Notification system not available. Please try another browser.');
-                }
+                if (firebaseInitialized) await requestNotificationPermission();
+                else alert('Notification system not available. Please try another browser.');
             });
-            
             loadAppointments();
         });
     </script>

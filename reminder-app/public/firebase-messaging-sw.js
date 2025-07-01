@@ -12,12 +12,33 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Enhanced background message handler
 messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message', payload);
+  console.log('[SW] Received background message', payload);
+  
+  // Ensure notification options exist
   const notificationTitle = payload.notification?.title || 'Appointment Reminder';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
-    icon: '/icons/icon-192x192.png'
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    vibrate: [200, 100, 200] // Vibration pattern for mobile
   };
-  self.registration.showNotification(notificationTitle, notificationOptions);
+
+  // Show notification
+  self.registration.showNotification(notificationTitle, notificationOptions)
+    .catch(err => console.error('Error showing notification:', err));
+});
+
+// Add click event listener for notifications
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({type: 'window'}).then(windowClients => {
+      if (windowClients.length > 0) {
+        return windowClients[0].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
 });

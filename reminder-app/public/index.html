@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointment Reminder</title>
     <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3498db">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5; color: #333; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -61,12 +62,8 @@
         };
 
         let messaging;
-        let isBrave = false;
-
-        // Detect Brave browser
-        (async () => {
-            isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
-        })();
+        let isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
+        let isHuawei = navigator.userAgent.includes('HUAWEI');
 
         async function initializeFirebase() {
             try {
@@ -74,13 +71,17 @@
                 
                 if ('serviceWorker' in navigator) {
                     try {
-                        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                            scope: '/',
+                            updateViaCache: 'none'
+                        });
+                        
                         messaging = firebase.messaging();
                         
-                        if (isBrave) {
+                        if (isBrave || isHuawei) {
                             const permission = await Notification.requestPermission();
                             if (permission === 'granted') {
-                                console.log('Brave notifications enabled');
+                                console.log('Browser notifications enabled');
                             }
                         }
                         
@@ -119,10 +120,8 @@
 
         async function getFCMToken() {
             try {
-                if (isBrave) {
-                    const braveToken = 'brave-' + Math.random().toString(36).substring(2, 15);
-                    localStorage.setItem('fcmToken', braveToken);
-                    return braveToken;
+                if (isHuawei) {
+                    return 'huawei-fallback-token';
                 }
                 
                 const currentToken = await messaging.getToken({ 
@@ -137,12 +136,6 @@
             } catch (error) {
                 console.error('Error getting token:', error);
                 return null;
-            }
-        }
-
-        function showNotification(title, body) {
-            if (Notification.permission === 'granted') {
-                new Notification(title, { body });
             }
         }
 
@@ -168,16 +161,17 @@
                     body: JSON.stringify({ name, timestamp: appointmentTime, fcmToken })
                 });
                 
+                const result = await response.json();
+                
                 if (response.ok) {
-                    alert('Appointment scheduled successfully!');
-                    showNotification('Appointment Scheduled', `Your appointment is set for ${new Date(appointmentTime).toLocaleString()}`);
+                    alert(result.message || 'Appointment scheduled successfully!');
                     loadAppointments();
                 } else {
-                    throw new Error('Failed to schedule appointment');
+                    alert(result.error || 'Failed to schedule appointment');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to schedule appointment');
+                alert('Network error. Please try again.');
             }
         });
 

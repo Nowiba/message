@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const path = require("path");
 const bodyParser = require("body-parser");
+const fetch = require('node-fetch'); // Added for cron job
 
 const app = express();
 
@@ -25,7 +26,7 @@ const db = admin.database();
 app.get("/check", async (req, res) => {
   try {
     const now = Date.now();
-    const notifyBefore = 30 * 60 * 1000; // 30 minutes in ms
+    const notifyBefore = 30 * 60 * 1000;
 
     const snapshot = await db.ref("appointments").once("value");
     const appointments = snapshot.val() || {};
@@ -35,13 +36,7 @@ app.get("/check", async (req, res) => {
       const appt = appointments[id];
       const apptTime = new Date(appt.timestamp).getTime();
 
-      if (
-        !appt.reminderSent &&
-        appt.fcmToken &&
-        apptTime - now <= notifyBefore &&
-        apptTime > now
-      ) {
-        // Send reminder notification
+      if (!appt.reminderSent && appt.fcmToken && apptTime - now <= notifyBefore && apptTime > now) {
         await admin.messaging().send({
           token: appt.fcmToken,
           notification: {
@@ -50,7 +45,6 @@ app.get("/check", async (req, res) => {
           },
         });
         
-        // Mark as sent
         updates[`appointments/${id}/reminderSent`] = true;
         updates[`appointments/${id}/reminderSentAt`] = new Date().toISOString();
       }
@@ -84,7 +78,6 @@ app.post("/appointments", async (req, res) => {
 
     await newApptRef.set(appointment);
 
-    // Send immediate confirmation
     await admin.messaging().send({
       token: fcmToken,
       notification: {
@@ -115,20 +108,23 @@ app.get("/appointments", async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get("/", (req, res) => {
-  res.send("Appointment Reminder Backend is running");
+// All other routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  
+  // Internal cron job
+  setInterval(async () => {
+    try {
+      const response = await fetch(`http://localhost:${port}/check`);
+      const data = await response.json();
+      console.log("Scheduled check result:", data);
+    } catch (err) {
+      console.error("Scheduled check error:", err);
+    }
+  }, 60000);
 });
-
-// Schedule the check every minute
-setInterval(() => {
-  fetch(`http://localhost:${port}/check`)
-    .then(res => res.json())
-    .then(data => console.log("Scheduled check result:", data))
-    .catch(err => console.error("Scheduled check error:", err));
-}, 60000); // Every 60 seconds

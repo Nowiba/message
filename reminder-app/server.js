@@ -1,9 +1,13 @@
 const express = require("express");
 const admin = require("firebase-admin");
 const cors = require("cors");
+const path = require("path"); // <-- add this
 
 const app = express();
 app.use(cors());
+
+// Serve static files from the "public" folder
+app.use(express.static(path.join(__dirname, "public"))); // <-- add this
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
@@ -17,7 +21,7 @@ const db = admin.database();
 app.get("/check", async (req, res) => {
   try {
     const now = Date.now();
-    const notifyBefore = 30 * 60 * 1000; // 30 minutes in ms
+    const notifyBefore = 30 * 60 * 1000;
 
     const snapshot = await db.ref("appointments").once("value");
     const appointments = snapshot.val() || {};
@@ -33,7 +37,6 @@ app.get("/check", async (req, res) => {
         time - now <= notifyBefore &&
         time > now
       ) {
-        // Send push notification
         await admin.messaging().send({
           token: appt.fcmToken,
           notification: {

@@ -52,6 +52,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js"></script>
     <script>
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBMJuAmIAqDUXhZcGBHq8CszhJL92VaZ64",
             authDomain: "information-project1.firebaseapp.com",
@@ -61,9 +62,9 @@
             appId: "1:1098270976013:web:2e1ca7602b316b6ed30d44"
         };
 
+        // Initialize Firebase
         let messaging;
-        let isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
-        let isHuawei = navigator.userAgent.includes('HUAWEI');
+        let isInitialized = false;
 
         async function initializeFirebase() {
             try {
@@ -71,29 +72,25 @@
                 
                 if ('serviceWorker' in navigator) {
                     try {
-                        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-                            scope: '/',
-                            updateViaCache: 'none'
-                        });
+                        // Register service worker
+                        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                        console.log('ServiceWorker registration successful');
                         
+                        // Initialize messaging
                         messaging = firebase.messaging();
-                        
-                        if (isBrave || isHuawei) {
-                            const permission = await Notification.requestPermission();
-                            if (permission === 'granted') {
-                                console.log('Browser notifications enabled');
-                            }
-                        }
+                        isInitialized = true;
                         
                         return true;
                     } catch (swError) {
-                        console.error('Service Worker registration failed:', swError);
+                        console.error('ServiceWorker registration failed:', swError);
                         return false;
                     }
+                } else {
+                    console.warn('Service workers not supported');
+                    return false;
                 }
-                return false;
-            } catch (error) {
-                console.error('Firebase initialization error:', error);
+            } catch (firebaseError) {
+                console.error('Firebase initialization error:', firebaseError);
                 return false;
             }
         }
@@ -107,74 +104,57 @@
                 if (permission === 'granted') {
                     permissionElement.textContent = 'Notification permission granted. You will receive reminders.';
                     permissionElement.className = 'permission-granted';
-                    await getFCMToken();
-                    document.getElementById('appointment-form').classList.remove('hidden');
+                    
+                    // Get FCM token
+                    const token = await messaging.getToken({ 
+                        vapidKey: "BF0XL6TATWEVgiN1aZwrPws32D4AAxabxdRs0zXbKSarbfPlCIxpXjMC2F5ap52xFLDnP_TAYmInDPIM6vgzmeQ"
+                    });
+                    
+                    if (token) {
+                        localStorage.setItem('fcmToken', token);
+                        document.getElementById('appointment-form').classList.remove('hidden');
+                    } else {
+                        permissionElement.textContent = 'Failed to get notification token. Please refresh and try again.';
+                        permissionElement.className = 'permission-denied';
+                    }
                 } else {
                     permissionElement.textContent = 'Notification permission denied. You will not receive reminders.';
                     permissionElement.className = 'permission-denied';
                 }
             } catch (error) {
                 console.error('Error requesting notification permission:', error);
+                const permissionElement = document.getElementById('notification-permission');
+                permissionElement.style.display = 'block';
+                permissionElement.textContent = 'Error requesting notifications. Please try again.';
+                permissionElement.className = 'permission-denied';
             }
         }
 
-        async function getFCMToken() {
-            try {
-                if (isHuawei) {
-                    return 'huawei-fallback-token';
-                }
-                
-                const currentToken = await messaging.getToken({ 
-                    vapidKey: "BF0XL6TATWEVgiN1aZwrPws32D4AAxabxdRs0zXbKSarbfPlCIxpXjMC2F5ap52xFLDnP_TAYmInDPIM6vgzmeQ"
-                });
-                
-                if (currentToken) {
-                    localStorage.setItem('fcmToken', currentToken);
-                    return currentToken;
-                }
-                return null;
-            } catch (error) {
-                console.error('Error getting token:', error);
-                return null;
-            }
-        }
-
-        document.getElementById('schedule-btn').addEventListener('click', async () => {
-            const name = document.getElementById('name').value.trim();
-            const appointmentTime = document.getElementById('appointment-time').value;
+        // Initialize Firebase when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeFirebase();
             
-            if (!name || !appointmentTime) {
-                alert('Please fill in all fields');
-                return;
+            // Set up button click handler
+            document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
+                if (!isInitialized) {
+                    alert('Notification system not ready yet. Please wait a moment and try again.');
+                    return;
+                }
+                await requestNotificationPermission();
+            });
+            
+            // Check if already has permission
+            if (Notification.permission === 'granted') {
+                document.getElementById('notification-permission').style.display = 'block';
+                document.getElementById('notification-permission').textContent = 'Notifications already enabled.';
+                document.getElementById('notification-permission').className = 'permission-granted';
+                document.getElementById('appointment-form').classList.remove('hidden');
             }
             
-            const fcmToken = localStorage.getItem('fcmToken');
-            if (!fcmToken) {
-                alert('Notification setup incomplete. Please enable notifications first.');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/appointments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, timestamp: appointmentTime, fcmToken })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert(result.message || 'Appointment scheduled successfully!');
-                    loadAppointments();
-                } else {
-                    alert(result.error || 'Failed to schedule appointment');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Network error. Please try again.');
-            }
+            loadAppointments();
         });
 
+        // Rest of your existing functions (loadAppointments, etc.)
         async function loadAppointments() {
             try {
                 const response = await fetch('/appointments');
@@ -205,14 +185,38 @@
             }
         }
 
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', async () => {
-            const firebaseInitialized = await initializeFirebase();
-            document.getElementById('enable-notifications-btn').addEventListener('click', async () => {
-                if (firebaseInitialized) await requestNotificationPermission();
-                else alert('Notification system not available. Please try another browser.');
-            });
-            loadAppointments();
+        document.getElementById('schedule-btn').addEventListener('click', async () => {
+            const name = document.getElementById('name').value.trim();
+            const appointmentTime = document.getElementById('appointment-time').value;
+            
+            if (!name || !appointmentTime) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            const fcmToken = localStorage.getItem('fcmToken');
+            if (!fcmToken) {
+                alert('Notification setup incomplete. Please enable notifications first.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/appointments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, timestamp: appointmentTime, fcmToken })
+                });
+                
+                if (response.ok) {
+                    alert('Appointment scheduled successfully!');
+                    loadAppointments();
+                } else {
+                    throw new Error('Failed to schedule appointment');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to schedule appointment');
+            }
         });
     </script>
 </body>
